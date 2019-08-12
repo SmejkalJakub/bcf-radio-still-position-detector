@@ -52,7 +52,7 @@ void lis2_event_handler(bc_lis2dh12_t *self, bc_lis2dh12_event_t event, void *ev
     }
     else
     {
-        bc_log_debug("Error");
+        bc_log_debug("Not playing");
     }
 }
 
@@ -118,7 +118,7 @@ void application_init(void)
 
     // Activate alarm when axis Z is above 0.25 or below -0.25 g
     alarm.z_high = true;
-    alarm.threshold = 0.2;
+    alarm.threshold = 0.7;
     alarm.duration = 0;
 
     bc_lis2dh12_set_alarm(&acc, &alarm);
