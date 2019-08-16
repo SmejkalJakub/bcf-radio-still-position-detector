@@ -52,7 +52,7 @@ void lis2_event_handler(bc_lis2dh12_t *self, bc_lis2dh12_event_t event, void *ev
     }
     else
     {
-        bc_log_debug("Not playing");
+        
     }
 }
 
