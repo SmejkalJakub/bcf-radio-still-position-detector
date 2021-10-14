@@ -8,94 +8,94 @@
 
 
 // LED instance
-bc_led_t led;
+twr_led_t led;
 
 // Button instance
-bc_button_t button;
+twr_button_t button;
 
 // Accelerometer
-bc_lis2dh12_t acc;
-bc_lis2dh12_result_g_t result;
+twr_lis2dh12_t acc;
+twr_lis2dh12_result_g_t result;
 
 float magnitude;
 
-bc_tick_t startSeconds = 0;
-bc_tick_t endSeconds = 0;
+twr_tick_t startSeconds = 0;
+twr_tick_t endSeconds = 0;
 
 bool playing = false;
 
-void lis2_event_handler(bc_lis2dh12_t *self, bc_lis2dh12_event_t event, void *event_param)
+void lis2_event_handler(twr_lis2dh12_t *self, twr_lis2dh12_event_t event, void *event_param)
 {
     float holdTime;
 
-    if (event == BC_LIS2DH12_EVENT_UPDATE && playing)
+    if (event == TWR_LIS2DH12_EVENT_UPDATE && playing)
     {
-        static bc_tick_t radio_delay = 0;
+        static twr_tick_t radio_delay = 0;
 
-        bc_lis2dh12_get_result_g(&acc, &result);
+        twr_lis2dh12_get_result_g(&acc, &result);
 
         magnitude = pow(result.x_axis, 2) + pow(result.y_axis, 2) + pow(result.z_axis, 2);
         magnitude = sqrt(magnitude);
-        
+
 
         if(magnitude > 1.19 || magnitude < 0.95)
         {
-            endSeconds = bc_tick_get();
+            endSeconds = twr_tick_get();
             playing = false;
 
-            bc_lis2dh12_set_update_interval(&acc, BC_TICK_INFINITY);
-            bc_led_set_mode(&led, BC_LED_MODE_OFF);
+            twr_lis2dh12_set_update_interval(&acc, TWR_TICK_INFINITY);
+            twr_led_set_mode(&led, TWR_LED_MODE_OFF);
 
-            if (bc_tick_get() >= radio_delay)
+            if (twr_tick_get() >= radio_delay)
             {
                 // Make longer pulse when transmitting
-                bc_led_pulse(&led, 100);
+                twr_led_pulse(&led, 100);
 
                 holdTime = ((endSeconds - startSeconds) / (float)1000);
 
-                bc_radio_pub_float("hold-time", &holdTime);
+                twr_radio_pub_float("hold-time", &holdTime);
 
-                radio_delay = bc_tick_get() + RADIO_DELAY;
+                radio_delay = twr_tick_get() + RADIO_DELAY;
             }
         }
     }
 }
 
-void button_event_handler(bc_button_t *self, bc_button_event_t event, void *event_param)
-{ 
-    static bc_tick_t start_delay = 0;
-    if (event == BC_BUTTON_EVENT_PRESS)
+void button_event_handler(twr_button_t *self, twr_button_event_t event, void *event_param)
+{
+    static twr_tick_t start_delay = 0;
+    if (event == TWR_BUTTON_EVENT_PRESS)
     {
-        while(bc_tick_get() >= start_delay)
+        while(twr_tick_get() >= start_delay)
         {
-            start_delay = bc_tick_get() + START_DELAY;
+            start_delay = twr_tick_get() + START_DELAY;
         }
 
-        bc_lis2dh12_set_update_interval(&acc, 40);
+        twr_lis2dh12_set_update_interval(&acc, 40);
 
         playing = true;
-        startSeconds = bc_tick_get();
+        startSeconds = twr_tick_get();
 
-        bc_led_set_mode(&led, BC_LED_MODE_ON);
+        twr_led_set_mode(&led, TWR_LED_MODE_ON);
     }
 
 }
 
 // This function dispatches battery events
-void battery_event_handler(bc_module_battery_event_t event, void *event_param)
+void battery_event_handler(twr_module_battery_event_t event, void *event_param)
 {
     // Update event?
-    if (event == BC_MODULE_BATTERY_EVENT_UPDATE)
+    if (event == TWR_MODULE_BATTERY_EVENT_UPDATE)
     {
         float voltage;
 
         // Read battery voltage
-        if (bc_module_battery_get_voltage(&voltage))
+        if (twr_module_battery_get_voltage(&voltage))
         {
-            bc_log_info("APP: Battery voltage = %.2f", voltage);
+            twr_log_info("APP: Battery voltage = %.2f", voltage);
 
             // Publish battery voltage
-            bc_radio_pub_battery(&voltage);
+            twr_radio_pub_battery(&voltage);
         }
     }
 }
@@ -103,28 +103,28 @@ void battery_event_handler(bc_module_battery_event_t event, void *event_param)
 void application_init(void)
 {
     // Initialize logging
-    bc_log_init(BC_LOG_LEVEL_DUMP, BC_LOG_TIMESTAMP_ABS);
+    twr_log_init(TWR_LOG_LEVEL_DUMP, TWR_LOG_TIMESTAMP_ABS);
 
     // Initialize LED
-    bc_led_init(&led, BC_GPIO_LED, false, false);
-    bc_led_pulse(&led, 2000);
+    twr_led_init(&led, TWR_GPIO_LED, false, false);
+    twr_led_pulse(&led, 2000);
 
-    bc_button_init(&button, BC_GPIO_BUTTON, BC_GPIO_PULL_DOWN, 0);
-    bc_button_set_event_handler(&button, button_event_handler, NULL);
+    twr_button_init(&button, TWR_GPIO_BUTTON, TWR_GPIO_PULL_DOWN, 0);
+    twr_button_set_event_handler(&button, button_event_handler, NULL);
 
 
     // Initialize battery
-    bc_module_battery_init();
-    bc_module_battery_set_event_handler(battery_event_handler, NULL);
-    bc_module_battery_set_update_interval(BATTERY_UPDATE_INTERVAL);
+    twr_module_battery_init();
+    twr_module_battery_set_event_handler(battery_event_handler, NULL);
+    twr_module_battery_set_update_interval(BATTERY_UPDATE_INTERVAL);
 
     // Initialize radio
-    bc_radio_init(BC_RADIO_MODE_NODE_SLEEPING);
+    twr_radio_init(TWR_RADIO_MODE_NODE_SLEEPING);
 
     // Send radio pairing request
-    bc_radio_pairing_request("still-position-detector", VERSION);
+    twr_radio_pairing_request("still-position-detector", VERSION);
 
-    bc_lis2dh12_init(&acc, BC_I2C_I2C0, 0x19);
-    bc_lis2dh12_set_event_handler(&acc, lis2_event_handler, NULL);
-    bc_lis2dh12_set_update_interval(&acc, BC_TICK_INFINITY);
+    twr_lis2dh12_init(&acc, TWR_I2C_I2C0, 0x19);
+    twr_lis2dh12_set_event_handler(&acc, lis2_event_handler, NULL);
+    twr_lis2dh12_set_update_interval(&acc, TWR_TICK_INFINITY);
 }
